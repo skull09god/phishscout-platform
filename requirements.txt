@@ -1,4 +1,4 @@
-npandas
+pandas
 onnxruntime
 numpy
 fastapi
