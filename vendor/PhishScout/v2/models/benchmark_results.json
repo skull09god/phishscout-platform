@@ -1,0 +1,21 @@
+{
+  "config": {
+    "n_estimators": 200,
+    "max_depth": 10,
+    "num_leaves": 63,
+    "min_child_samples": 10,
+    "learning_rate": 0.1
+  },
+  "determinism": {
+    "n_seeds": 10,
+    "f1_mean": 0.8966,
+    "f1_std": 0.0,
+    "auc_mean": 0.9615,
+    "auc_std": 0.0
+  },
+  "robustness": {
+    "clean_f1": 0.8966,
+    "extreme_5pct_f1": 0.8306,
+    "gaussian_sigma05_f1": 0.6699
+  }
+}

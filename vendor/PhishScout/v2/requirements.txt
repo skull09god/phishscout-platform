@@ -1,0 +1,13 @@
+# PhishScout v2 - Python dependencies
+lightgbm
+scikit-learn
+onnx
+onnxruntime
+onnxmltools
+pandas
+numpy
+datasets
+huggingface_hub
+tldextract
+python-Levenshtein
+joblib

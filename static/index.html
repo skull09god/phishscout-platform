@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhishScout URL Scanner</title>
+<style>
+:root{
+  --bg:#f8fafc; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --accent:#4f46e5;
+  --safe:#16a34a; --warn:#d97706; --bad:#dc2626; --surface:#ffffff;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a0a0a; --text:#ededed; --muted:#888; --border:#222; --accent:#818cf8;
+    --safe:#4ade80; --warn:#fbbf24; --bad:#f87171; --surface:#111;
+  }
+}
+*{box-sizing:border-box}
+body {
+  margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.5;
+  font-size:14px;
+}
+/* Technical Typography */
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+.wrap{max-width:860px;margin:0 auto;padding:32px 20px 60px}
+
+header h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-0.02em}
+header p{margin:4px 0 24px;color:var(--muted);font-size:13px}
+
+/* Flat Sections instead of Cards */
+.section {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px; margin-bottom: 24px;
+}
+.section:last-child { border-bottom: none; }
+
+/* Tabs - Segmented Control */
+.tabs{display:flex;gap:4px;margin-bottom:16px}
+.tab{
+  border:1px solid var(--border); background:var(--surface); color:var(--muted);
+  padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px;
+  font-weight:500; transition: all 0.1s ease;
+}
+.tab:hover { color: var(--text); }
+.tab.active{background:var(--text); border-color:var(--text); color:var(--bg)}
+
+/* Inputs & Buttons */
+.row{display:flex;gap:8px}
+input[type=text],textarea{
+  flex:1; width:100%; padding:8px 12px; border-radius:4px; 
+  border:1px solid var(--border); background:var(--surface); color:var(--text);
+  font-size:13px; transition: border-color 0.15s;
+}
+textarea{min-height:120px;resize:vertical; line-height:1.4}
+input:focus,textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 1px var(--accent)}
+button.go{
+  padding:8px 16px; border:1px solid var(--accent); border-radius:4px; 
+  background:var(--accent); color:#fff; font-weight:500; cursor:pointer;
+  font-size:13px; transition: opacity 0.15s;
+}
+button.go:hover:not(:disabled) { opacity: 0.9; }
+button.go:disabled{opacity:.5;cursor:not-allowed}
+
+/* Hints */
+.hint{font-size:12px;color:var(--muted);margin-top:10px; font-family:system-ui}
+.hint a{color:var(--muted);cursor:pointer;text-decoration:none;border-bottom:1px dashed var(--muted);padding-bottom:1px;margin:0 4px;transition:color 0.1s}
+.hint a:hover{color:var(--text);border-bottom-color:var(--text)}
+
+/* Data Table */
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+td.u{font-family:ui-monospace, monospace;font-size:12px;word-break:break-all;max-width:400px}
+td.score { text-align: right; font-family: ui-monospace, monospace; }
+th.score { text-align: right; }
+
+tr.click{cursor:pointer; transition: background 0.1s}
+tr.click:hover{background:var(--surface)}
+
+/* Verdict Badges - Flat, Sharp, High Contrast */
+.pill{
+  display:inline-block; padding:2px 6px; border-radius:2px; font-size:11px;
+  font-weight:600; font-family:ui-monospace, monospace; text-transform:uppercase;
+  border:1px solid transparent;
+}
+.pill.safe{background:transparent;color:var(--safe);border-color:var(--safe)}
+.pill.suspicious{background:transparent;color:var(--warn);border-color:var(--warn)}
+.pill.malicious{background:transparent;color:var(--bad);border-color:var(--bad)}
+
+/* Result Block */
+.verdict { display:flex; align-items:flex-start; gap:16px; margin-bottom:20px; }
+.v-icon { font-size:28px; line-height:1; }
+.v-details { flex:1; }
+.vtitle { font-size:18px; font-weight:600; margin-bottom:4px; }
+.safe .vtitle{color:var(--safe)}.suspicious .vtitle{color:var(--warn)}.malicious .vtitle{color:var(--bad)}
+.url-display { font-family:ui-monospace, monospace; font-size:12px; word-break:break-all; color:var(--muted); }
+
+/* Gauge */
+.gauge-wrap { margin:16px 0; max-width:400px; }
+.gauge{height:6px;border-radius:99px;background:var(--border);position:relative;overflow:hidden}
+.gauge>i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;transition: width 0.5s ease}
+.ticks{position:relative;height:16px;font-size:10px;color:var(--muted);margin-top:4px; font-family: ui-monospace, monospace;}
+.ticks span{position:absolute;transform:translateX(-50%)}
+
+/* Meta Data */
+.meta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:16px}
+.meta span b { color: var(--text); font-family: ui-monospace, monospace; font-weight: normal; }
+
+/* Signals */
+h3{margin:16px 0 8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)}
+.sig{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
+.dot{width:6px;height:6px;border-radius:50%;margin-top:6px;flex:none}
+.dot.bad{background:var(--bad)}.dot.warn{background:var(--warn)}.dot.info{background:var(--muted)}
+.sig small{display:block;color:var(--muted);font-size:12px;margin-top:2px; font-family: ui-monospace, monospace;}
+
+/* Misc */
+.hist-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.hist-head h3 { margin: 0; }
+.link{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:4px;transition:color 0.1s}
+.link:hover{color:var(--text)}
+.err{color:var(--bad);font-size:12px;margin-top:12px;font-family:ui-monospace, monospace;}
+footer{font-size:11px;color:var(--muted);margin-top:32px;line-height:1.6;max-width:700px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>🛡️ PhishScout</h1>
+  <p>Paste a URL for an instant phishing / malware risk verdict. Runs fully offline.</p>
+</header>
+
+<div class="section">
+  <div class="tabs">
+    <button class="tab active" id="tabSingle">Single URL</button>
+    <button class="tab" id="tabBulk">Bulk scan</button>
+  </div>
+  <div id="single">
+    <div class="row">
+      <input type="text" id="urlInput" class="mono" placeholder="https://example.com/login" autocomplete="off" spellcheck="false">
+      <button class="go" id="scanBtn">Scan</button>
+    </div>
+    <div class="hint">Try:
+      <a data-ex="http://paypa1-verify.ngrok.io/login?token=x">phishing-style</a>
+      <a data-ex="http://36.88.136.194:37295/bin.sh">malware payload</a>
+      <a data-ex="https://www.google.com">trusted site</a>
+    </div>
+  </div>
+  <div id="bulk" hidden>
+    <textarea id="bulkInput" class="mono" placeholder="One URL per line (max 50)"></textarea>
+    <div class="row" style="margin-top:12px;justify-content:space-between;align-items:center">
+      <span class="hint" id="bulkCount" style="margin:0">0 URLs</span>
+      <button class="go" id="bulkBtn">Scan all</button>
+    </div>
+  </div>
+  <div class="err" id="err"></div>
+</div>
+
+<div class="section" id="resultCard" hidden></div>
+
+<div class="section" id="histCard" hidden>
+  <div class="hist-head">
+    <h3>Recent Scans</h3>
+    <button class="link" id="clearHist">Clear History</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>URL</th>
+        <th>Verdict</th>
+        <th class="score">Score</th>
+      </tr>
+    </thead>
+    <tbody id="histBody"></tbody>
+  </table>
+</div>
+
+<footer>
+  Verdicts: <b>malicious</b> ≥ 80% · <b>suspicious</b> ≥ 40% · <b>safe</b> below. This tool analyses the URL text only, it does not visit the page, so treat results as one signal, not a guarantee. Trusted-domain whitelist hits are not re-checked, so a malicious page hosted on a trusted site can still show as safe.
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ICON={safe:"✅",suspicious:"⚠️",malicious:"🚫"};
+const LABEL={safe:"Looks safe",suspicious:"Suspicious",malicious:"Malicious"};
+const COLOR={safe:"var(--safe)",suspicious:"var(--warn)",malicious:"var(--bad)"};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct=p=>(p*100).toFixed(1)+"%";
+
+function getHist(){try{return JSON.parse(localStorage.getItem("ps_hist")||"[]")}catch(e){return[]}}
+function setHist(h){try{localStorage.setItem("ps_hist",JSON.stringify(h.slice(0,25)))}catch(e){}}
+function addHist(rs){const h=getHist();rs.filter(r=>!r.error).reverse().forEach(r=>h.unshift({url:r.url,verdict:r.verdict,probability:r.probability}));setHist(h);renderHist()}
+
+function renderHist(){
+  const h=getHist();$("histCard").hidden=!h.length;
+  $("histBody").innerHTML=h.map((r,i)=>`
+    <tr class="click" data-i="${i}">
+      <td class="u">${esc(r.url)}</td>
+      <td><span class="pill ${r.verdict}">${r.verdict}</span></td>
+      <td class="score">${pct(r.probability)}</td>
+    </tr>`).join("");
+}
+$("histBody").addEventListener("click",e=>{const tr=e.target.closest("tr");if(!tr)return;scanSingle(getHist()[tr.dataset.i].url)});
+$("clearHist").onclick=()=>{setHist([]);renderHist()};
+
+function showResult(r){
+  const c=$("resultCard");c.hidden=false;
+  const sigs=r.signals.length?r.signals.map(s=>`
+    <div class="sig">
+      <span class="dot ${s.severity}"></span>
+      <div>${esc(s.label)}<small>${esc(s.detail)}</small></div>
+    </div>`).join("")
+    :`<div class="sig"><span class="dot info"></span><div>${r.whitelisted?"Host is on the trusted-domain whitelist, model skipped.":"No individual red flags in the URL structure."}</div></div>`;
+  
+  c.innerHTML=`
+  <div class="verdict ${r.verdict}">
+    <div class="v-icon">${ICON[r.verdict]}</div>
+    <div class="v-details">
+      <div class="vtitle">${LABEL[r.verdict]}</div>
+      <div class="url-display">${esc(r.url)}</div>
+    </div>
+  </div>
+  
+  <div class="gauge-wrap">
+    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+      <span>Risk Score</span>
+      <span class="mono" style="color:${COLOR[r.verdict]}; font-weight:600;">${pct(r.probability)}</span>
+    </div>
+    <div class="gauge"><i style="width:${Math.max(r.probability*100,1)}%;background:${COLOR[r.verdict]}"></i></div>
+    <div class="ticks"><span style="left:40%">40%</span><span style="left:80%">80%</span></div>
+  </div>
+  
+  <div class="meta">
+    <span>Host: <b>${esc(r.host||"-")}</b></span>
+    <span>Scan time: <b>${r.latency_ms} ms</b></span>
+    ${r.whitelisted?"<span><b>Whitelisted</b></span>":""}
+  </div>
+  
+  <h3>Signals</h3>${sigs}`;
+}
+
+function showBulk(rs){
+  const c=$("resultCard");c.hidden=false;
+  const n=v=>rs.filter(r=>r.verdict===v).length;
+  c.innerHTML=`
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <h3 style="margin:0;">Scan Results</h3>
+    <div style="display:flex; gap:8px;">
+      <span class="pill malicious">${n("malicious")} MAL</span>
+      <span class="pill suspicious">${n("suspicious")} SUS</span>
+      <span class="pill safe">${n("safe")} SAF</span>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>URL</th><th>Verdict</th><th class="score">Score</th></tr>
+    </thead>
+    <tbody>${
+   rs.map(r=>r.error?`
+   <tr>
+     <td class="u">${esc(r.input)}</td>
+     <td colspan="2" class="err" style="margin:0; text-align:right;">${esc(r.error)}</td>
+   </tr>`
+   :`
+   <tr>
+     <td class="u">${esc(r.url)}</td>
+     <td><span class="pill ${r.verdict}">${r.verdict}</span></td>
+     <td class="score">${pct(r.probability)}</td>
+   </tr>`).join("")}
+    </tbody>
+  </table>`;
+}
+
+async function post(path,body){
+  const res=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(typeof data.detail==="string"?data.detail:"Request failed ("+res.status+")");
+  return data;
+}
+async function scanSingle(url){
+  url=(url||"").trim();$("err").textContent="";
+  if(!url){$("err").textContent="Enter a URL first.";return}
+  $("urlInput").value=url;$("scanBtn").disabled=true;$("scanBtn").textContent="Scanning…";
+  try{const r=await post("/api/scan",{url});showResult(r);addHist([r]);window.scrollTo({top:0,behavior:"smooth"})}
+  catch(e){$("err").textContent=e.message}
+  finally{$("scanBtn").disabled=false;$("scanBtn").textContent="Scan"}
+}
+async function scanBulk(){
+  const urls=$("bulkInput").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);$("err").textContent="";
+  if(!urls.length){$("err").textContent="Paste at least one URL.";return}
+  if(urls.length>50){$("err").textContent="Max 50 URLs per batch.";return}
+  $("bulkBtn").disabled=true;$("bulkBtn").textContent="Scanning…";
+  try{const d=await post("/api/scan/batch",{urls});showBulk(d.results);addHist(d.results)}
+  catch(e){$("err").textContent=e.message}
+  finally{$("bulkBtn").disabled=false;$("bulkBtn").textContent="Scan all"}
+}
+$("scanBtn").onclick=()=>scanSingle($("urlInput").value);
+$("urlInput").addEventListener("keydown",e=>{if(e.key==="Enter")scanSingle($("urlInput").value)});
+$("bulkBtn").onclick=scanBulk;
+$("bulkInput").addEventListener("input",()=>{const n=$("bulkInput").value.split(/\r?\n/).filter(s=>s.trim()).length;$("bulkCount").textContent=n+" URL"+(n===1?"":"s")});
+document.querySelectorAll("[data-ex]").forEach(a=>a.onclick=()=>scanSingle(a.dataset.ex));
+
+function tab(bulk){
+  $("single").hidden=bulk;$("bulk").hidden=!bulk;
+  $("tabSingle").classList.toggle("active",!bulk);
+  $("tabBulk").classList.toggle("active",bulk);
+  $("err").textContent="";
+}
+$("tabSingle").onclick=()=>tab(false);
+$("tabBulk").onclick=()=>tab(true);
+
+renderHist();
+</script>
+</body>
+</html>
